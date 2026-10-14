@@ -1,0 +1,326 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>ThreatLens AI — Complete Architecture, APIs & Tech Stack Report</title>
+  <style>
+    @page {
+      size: A4;
+      margin: 15mm 15mm 15mm 15mm;
+    }
+    * {
+      box-sizing: border-box;
+      -webkit-print-color-adjust: exact !important;
+      print-color-adjust: exact !important;
+    }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      color: #0f172a;
+      background: #ffffff;
+      line-height: 1.5;
+      font-size: 13px;
+      margin: 0;
+      padding: 0;
+    }
+    .header {
+      border-bottom: 2px solid #4f46e5;
+      padding-bottom: 16px;
+      margin-bottom: 20px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .brand-title {
+      font-size: 26px;
+      font-weight: 800;
+      color: #0f172a;
+      letter-spacing: -0.5px;
+      margin: 0;
+    }
+    .brand-sub {
+      font-size: 13px;
+      color: #4f46e5;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-top: 3px;
+    }
+    .meta-badge {
+      background: #f1f5f9;
+      border: 1px solid #cbd5e1;
+      padding: 6px 14px;
+      border-radius: 8px;
+      font-size: 11px;
+      font-weight: 600;
+      color: #475569;
+      text-align: right;
+    }
+    h2 {
+      font-size: 17px;
+      font-weight: 700;
+      color: #1e1b4b;
+      margin-top: 24px;
+      margin-bottom: 12px;
+      border-left: 4px solid #4f46e5;
+      padding-left: 10px;
+    }
+    p {
+      color: #334155;
+      margin-top: 0;
+      margin-bottom: 10px;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-bottom: 20px;
+      font-size: 12px;
+    }
+    th {
+      background: #f8fafc;
+      color: #334155;
+      font-weight: 700;
+      text-align: left;
+      padding: 9px 12px;
+      border: 1px solid #e2e8f0;
+    }
+    td {
+      padding: 8px 12px;
+      border: 1px solid #e2e8f0;
+      color: #1e293b;
+      vertical-align: top;
+    }
+    tr:nth-child(even) td {
+      background: #f8fafc;
+    }
+    .badge {
+      display: inline-block;
+      padding: 2px 7px;
+      border-radius: 5px;
+      font-size: 10px;
+      font-weight: 700;
+      font-family: monospace;
+    }
+    .badge-get { background: #dcfce7; color: #15803d; border: 1px solid #86efac; }
+    .badge-post { background: #e0e7ff; color: #4338ca; border: 1px solid #a5b4fc; }
+    .badge-patch { background: #fef3c7; color: #b45309; border: 1px solid #fde68a; }
+    .badge-del { background: #fee2e2; color: #b91c1c; border: 1px solid #fca5a5; }
+    .badge-feat { background: #cffafe; color: #0e7490; border: 1px solid #67e8f9; }
+    .card {
+      background: #f8fafc;
+      border: 1px solid #e2e8f0;
+      border-radius: 10px;
+      padding: 14px 16px;
+      margin-bottom: 14px;
+    }
+    .card-title {
+      font-weight: 700;
+      font-size: 13px;
+      color: #0f172a;
+      margin-bottom: 4px;
+    }
+    .grid-2 {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+      margin-bottom: 16px;
+    }
+    .footer {
+      border-top: 1px solid #e2e8f0;
+      padding-top: 12px;
+      margin-top: 30px;
+      display: flex;
+      justify-content: space-between;
+      font-size: 10px;
+      color: #64748b;
+    }
+    .highlight-box {
+      background: #eef2ff;
+      border: 1px solid #c7d2fe;
+      border-radius: 8px;
+      padding: 12px 14px;
+      margin-bottom: 16px;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Header -->
+  <div class="header">
+    <div>
+      <h1 class="brand-title">ThreatLens AI</h1>
+      <div class="brand-sub">Digital Risk Protection &amp; Brand Defense Platform</div>
+    </div>
+    <div class="meta-badge">
+      <div>DOCUMENTATION SPECIFICATION</div>
+      <div>Platform Version: 2.0.0 PRO • October 2026</div>
+      <div>Evaluation &amp; Architecture Reference</div>
+    </div>
+  </div>
+
+  <div class="highlight-box">
+    <strong>Executive Summary:</strong> ThreatLens AI is a next-generation Digital Risk Protection (DRP) and cybersecurity intelligence platform designed to safeguard enterprise brands against lookalike phishing domains, executive social impersonation, rogue mobile applications, and visual brand theft. Registered official assets bypass threat scoring with guaranteed zero false positives, while suspicious indicators are scored deterministically using explainable heuristics and vision OCR forensics.
+  </div>
+
+  <!-- SECTION 1: INTERNAL CORE APIS -->
+  <h2>1. Platform REST APIs Overview (Next.js App Router)</h2>
+  <p>ThreatLens exposes 8 high-performance serverless REST API endpoints running inside Next.js with automatic database connection fallback:</p>
+
+  <table>
+    <thead>
+      <tr>
+        <th style="width: 18%;">API Route</th>
+        <th style="width: 14%;">Methods</th>
+        <th style="width: 38%;">Functionality &amp; Purpose</th>
+        <th style="width: 30%;">Key Parameters / Payload</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><strong>/api/analyze</strong></td>
+        <td><span class="badge badge-post">POST</span></td>
+        <td><strong>URL &amp; Multi-Channel Threat Scanner:</strong> Evaluates submitted URLs, social handles, or app package IDs. Executes SSRF guards, checks authoritative brand baseline exclusions, and calculates 0–100 risk score with plain-English threat explanations.</td>
+        <td><code>candidate, channel (domain/social/app), platform, bio, publisher, saveToFindings</code></td>
+      </tr>
+      <tr>
+        <td><strong>/api/analyze-screenshot</strong> <span class="badge badge-feat">NEW</span></td>
+        <td><span class="badge badge-post">POST</span></td>
+        <td><strong>Screenshot Vision &amp; OCR Forensics:</strong> Ingests uploaded screenshot images, extracts embedded URLs, profile handles, and bio lures via OCR, detects visual spoofing cues (fake badges, cloned forms), and returns interactive hotspots with a full threat intelligence report.</td>
+        <td><code>image (Data URL), sampleId, customCandidate, customChannel, saveToFindings</code></td>
+      </tr>
+      <tr>
+        <td><strong>/api/findings</strong></td>
+        <td>
+          <span class="badge badge-get">GET</span>
+          <span class="badge badge-post">POST</span>
+          <span class="badge badge-patch">PATCH</span>
+        </td>
+        <td><strong>Threat Telemetry &amp; Findings Database:</strong> Fetches, filters, ingests, and updates threat findings. Allows SOC analysts to filter by risk level (Critical/High/Medium/Low) or status, and update triage status (new, reviewed, confirmed, false_positive).</td>
+        <td><code>GET: ?type=&amp;platform=&amp;riskLevel=&amp;status=&amp;search=<br>PATCH: { id, status }<br>POST: { type, displayName, riskScore, signals }</code></td>
+      </tr>
+      <tr>
+        <td><strong>/api/brand</strong></td>
+        <td>
+          <span class="badge badge-get">GET</span>
+          <span class="badge badge-post">POST</span>
+          <span class="badge badge-del">DELETE</span>
+        </td>
+        <td><strong>Authoritative Brand Baseline:</strong> Manages enterprise verified assets (registered domains, official social handles, verified mobile bundle IDs, VIP executive roster). Guarantees zero false positives on legitimate assets.</td>
+        <td><code>GET: returns brand baseline<br>POST: { type, platform, value }<br>DELETE: ?id=&lt;assetId&gt;</code></td>
+      </tr>
+      <tr>
+        <td><strong>/api/investigations</strong></td>
+        <td>
+          <span class="badge badge-get">GET</span>
+          <span class="badge badge-post">POST</span>
+        </td>
+        <td><strong>SOC Incident Case Management:</strong> Manages formalized investigation cases. Allows analysts to bundle multiple threat findings into active incident tickets, associate cryptographic evidence hashes, and track audit notes.</td>
+        <td><code>GET: list cases with evidence &amp; notes<br>POST: { title, description, severity, findingIds }</code></td>
+      </tr>
+      <tr>
+        <td><strong>/api/audit-logs</strong></td>
+        <td><span class="badge badge-get">GET</span></td>
+        <td><strong>Security Audit Trail:</strong> Provides an immutable timeline log of all analyst actions, asset additions, automated scans, and triage modifications for compliance standards (SOC2 Type II / NIST CSF).</td>
+        <td><code>take=50, ordered by timestamp descending</code></td>
+      </tr>
+      <tr>
+        <td><strong>/api/export</strong></td>
+        <td><span class="badge badge-get">GET</span></td>
+        <td><strong>Compliance &amp; Threat Audit Export:</strong> Downloads a comprehensive, structured JSON report containing all monitored telemetry, baseline assets, investigations, metrics, and forensic audit trails.</td>
+        <td><code>Content-Disposition: attachment; filename="ThreatLens-Audit-Export.json"</code></td>
+      </tr>
+      <tr>
+        <td><strong>/api/reset</strong></td>
+        <td><span class="badge badge-post">POST</span></td>
+        <td><strong>Factory Demo Baseline Reset:</strong> Wipes and restores the database to an authoritative demo baseline with realistic threat scenarios, verified assets, sample investigations, and integration states.</td>
+        <td><code>POST: triggers demo re-seeding</code></td>
+      </tr>
+    </tbody>
+  </table>
+
+  <!-- SECTION 2: EXTERNAL APIS & INTEGRATIONS -->
+  <h2>2. External Integrations &amp; Intelligence APIs</h2>
+  <div class="grid-2">
+    <div class="card">
+      <div class="card-title">🛡️ VirusTotal Intelligence API v3</div>
+      <p style="font-size: 11px; margin-bottom: 4px;"><strong>Endpoint:</strong> <code>https://www.virustotal.com/api/v3</code></p>
+      <p style="font-size: 11px;">Cross-references detected domain hosts, IPs, and uploaded files against global reputation blacklists, AV engine detections, and historical malicious passive DNS telemetry.</p>
+    </div>
+    <div class="card">
+      <div class="card-title">🤖 OpenAI GPT-4o / AI Copilot</div>
+      <p style="font-size: 11px; margin-bottom: 4px;"><strong>Model:</strong> <code>gpt-4o-mini / gpt-4o</code></p>
+      <p style="font-size: 11px;">Synthesizes transparent heuristic results into plain-English threat narratives, summarizes complex forensic indicators, and drafts legally compliant DMCA / registrar takedown notices.</p>
+    </div>
+  </div>
+
+  <!-- SECTION 3: SCREENSHOT FORENSIC SCANNER -->
+  <h2>3. AI Vision &amp; Screenshot Forensic Scanner Details</h2>
+  <p>The newly integrated <strong>Screenshot Impersonation &amp; Phishing Scanner</strong> allows users and analysts to identify threats from images without manually retyping obscure URLs or handles:</p>
+
+  <div class="card">
+    <ul style="margin: 0; padding-left: 20px; font-size: 12px;">
+      <li style="margin-bottom: 6px;"><strong>Multi-Format Ingestion:</strong> Drag-and-drop or file upload for PNG, JPG, JPEG, and WEBP. Supports direct system clipboard paste (<strong>Ctrl + V</strong>) after capturing a screenshot.</li>
+      <li style="margin-bottom: 6px;"><strong>Optical Character Recognition (OCR) Engine:</strong> Extracts address bar URLs (including deceptive TLDs like <code>.xyz</code>, <code>.co</code>), social media handles (<code>@threatlens_support_bot</code>), and Android package names (<code>com.threatlens.guard.mod</code>).</li>
+      <li style="margin-bottom: 6px;"><strong>Visual Spoofing Detection:</strong> Identifies cloned corporate Single Sign-On (SSO) login forms, counterfeit brand vector marks, emoji checkmarks used to fake verified status, and predatory permission requests.</li>
+      <li style="margin-bottom: 6px;"><strong>Interactive Hotspot Pins:</strong> Displays numbered interactive pins directly over the screenshot image highlighting the exact location of detected fraud (Address Bar, Profile Bio, Download Link).</li>
+      <li><strong>1-Click Remediation:</strong> Instant export of formal legal Takedown Notices for domain registrars, hosting providers, or social platform trust &amp; safety teams.</li>
+    </ul>
+  </div>
+
+  <!-- SECTION 4: FULL TECHNOLOGY STACK -->
+  <h2>4. Complete Platform Technology Stack</h2>
+  <table>
+    <thead>
+      <tr>
+        <th style="width: 25%;">Layer</th>
+        <th style="width: 30%;">Technologies Used</th>
+        <th style="width: 45%;">Role in ThreatLens Architecture</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><strong>Frontend Framework</strong></td>
+        <td>Next.js 16 (App Router) + React 19</td>
+        <td>Server components, client interactivity, and streaming dashboard views.</td>
+      </tr>
+      <tr>
+        <td><strong>Styling &amp; UI System</strong></td>
+        <td>Vanilla Tailwind CSS 4</td>
+        <td>Modern light-theme SaaS design (#F7F9FC canvas, white cards, soft borders).</td>
+      </tr>
+      <tr>
+        <td><strong>Type Safety</strong></td>
+        <td>TypeScript 5.x</td>
+        <td>Strict end-to-end typing across database models, APIs, and heuristic payloads.</td>
+      </tr>
+      <tr>
+        <td><strong>Database &amp; ORM</strong></td>
+        <td>Prisma ORM 5.22 + SQLite</td>
+        <td>Local persistent database with graceful in-memory fallback for serverless hosting.</td>
+      </tr>
+      <tr>
+        <td><strong>Heuristic Security Engine</strong></td>
+        <td>Deterministic Rules (heuristics.ts)</td>
+        <td>100% offline-capable, explainable scoring: Homoglyphs, Protocol Backslash, Combisquatting.</td>
+      </tr>
+      <tr>
+        <td><strong>Iconography</strong></td>
+        <td>Lucide React</td>
+        <td>High-clarity SVG security badges, radar indicators, and threat severity icons.</td>
+      </tr>
+      <tr>
+        <td><strong>Deployment Targets</strong></td>
+        <td>Netlify &amp; Vercel</td>
+        <td>Automated CI/CD with pinned Node 20 runtime and serverless functions.</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <!-- Footer -->
+  <div class="footer">
+    <div>ThreatLens AI • Enterprise Digital Risk Protection</div>
+    <div>Report Generated: October 2026 • Confidential SOC Telemetry</div>
+    <div>Zero False Positive Baseline Protected</div>
+  </div>
+
+</body>
+</html>

@@ -22,15 +22,17 @@ import {
   Info,
   Layers,
   Sparkles,
+  Camera,
 } from 'lucide-react';
 import { HeuristicAnalysisResult, FlaggedReason, HarmfulConsequence, SecurityCheckSource } from '@/lib/heuristics';
 
 interface QuickScannerTabProps {
   onScanComplete?: () => void;
   presetCandidate?: { candidate: string; channel: 'social' | 'app' | 'domain'; bio?: string; publisher?: string };
+  onSwitchToScreenshotScan?: () => void;
 }
 
-export default function QuickScannerTab({ onScanComplete, presetCandidate }: QuickScannerTabProps) {
+export default function QuickScannerTab({ onScanComplete, presetCandidate, onSwitchToScreenshotScan }: QuickScannerTabProps) {
   const [candidate, setCandidate] = useState(presetCandidate?.candidate || '');
   const [channel, setChannel] = useState<'domain' | 'social' | 'app'>(presetCandidate?.channel || 'domain');
   const [platform, setPlatform] = useState('');
@@ -180,6 +182,25 @@ export default function QuickScannerTab({ onScanComplete, presetCandidate }: Qui
             <p className="text-xs sm:text-sm text-slate-600 max-w-3xl leading-relaxed">
               Inspect suspect URLs, social handles, or application packages in real time. The engine checks your registered Brand Baseline first—guaranteeing zero false positives on official assets—or executes transparent heuristic detection with plain-English threat explanations.
             </p>
+
+            {/* Scanner Mode Switcher */}
+            <div className="pt-2 flex flex-wrap items-center gap-2">
+              <span className="rounded-xl bg-indigo-600 px-3 py-1.5 text-xs font-bold text-white shadow-2xs flex items-center gap-1.5">
+                <Activity className="h-3.5 w-3.5" />
+                <span>Text / URL Threat Scanner</span>
+              </span>
+              {onSwitchToScreenshotScan && (
+                <button
+                  type="button"
+                  onClick={onSwitchToScreenshotScan}
+                  className="rounded-xl bg-white border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-indigo-50 hover:border-indigo-200 hover:text-indigo-700 transition-all shadow-2xs flex items-center gap-1.5 cursor-pointer"
+                >
+                  <Camera className="h-3.5 w-3.5 text-indigo-600" />
+                  <span>Switch to Screenshot Vision Scanner</span>
+                  <span className="rounded bg-cyan-100 text-cyan-800 text-[10px] font-bold px-1.5 py-0.2">New</span>
+                </button>
+              )}
+            </div>
           </div>
         </div>
 

@@ -9,6 +9,7 @@ import DomainTab from '@/components/DomainTab';
 import InvestigationsTab from '@/components/InvestigationsTab';
 import BrandProfileTab from '@/components/BrandProfileTab';
 import QuickScannerTab from '@/components/QuickScannerTab';
+import ScreenshotScannerTab from '@/components/ScreenshotScannerTab';
 import JudgeScenariosModal from '@/components/JudgeScenariosModal';
 import CaseDetailModal from '@/components/CaseDetailModal';
 import AddAssetModal from '@/components/AddAssetModal';
@@ -22,6 +23,7 @@ import {
   ShieldCheck,
   Activity,
   Sparkles,
+  Camera,
 } from 'lucide-react';
 
 export default function Home() {
@@ -184,6 +186,7 @@ export default function Home() {
           {[
             { id: 'overview', label: 'Command Center', icon: LayoutDashboard },
             { id: 'scanner', label: 'URL Threat Scanner', icon: Activity, badge: 'Live' },
+            { id: 'screenshot', label: 'Screenshot Scanner', icon: Camera, badge: 'Vision' },
             { id: 'social', label: 'Social Media', count: socialCount, icon: Share2, weight: '30%' },
             { id: 'apps', label: 'App Stores', count: appCount, icon: Smartphone, weight: '30%' },
             { id: 'domains', label: 'Domain Defense', count: domainCount, icon: Globe },
@@ -272,6 +275,14 @@ export default function Home() {
               <QuickScannerTab
                 onScanComplete={fetchData}
                 presetCandidate={scannerPreset}
+                onSwitchToScreenshotScan={() => setActiveTab('screenshot')}
+              />
+            )}
+
+            {activeTab === 'screenshot' && (
+              <ScreenshotScannerTab
+                onScanComplete={fetchData}
+                onPromoteToCase={handlePromoteToCase}
               />
             )}
 

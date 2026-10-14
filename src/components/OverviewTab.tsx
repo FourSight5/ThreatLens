@@ -21,6 +21,7 @@ import {
   Lightbulb,
   Check,
   Copy,
+  Camera,
 } from 'lucide-react';
 
 interface Finding {
@@ -133,6 +134,13 @@ export default function OverviewTab({
             >
               <Activity className="h-4 w-4" />
               <span>Launch Quick Threat Scanner</span>
+            </button>
+            <button
+              onClick={() => onNavigateTab('screenshot')}
+              className="flex items-center gap-2 rounded-xl bg-gradient-to-r from-cyan-600 to-indigo-600 px-4 py-2.5 text-xs font-bold text-white shadow-sm transition-all hover:from-cyan-500 hover:to-indigo-500 hover:shadow-md active:scale-95 cursor-pointer"
+            >
+              <Camera className="h-4 w-4" />
+              <span>Screenshot Threat Scanner</span>
             </button>
             <button
               onClick={() => onNavigateTab('brand')}

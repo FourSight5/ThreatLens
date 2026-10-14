@@ -10,6 +10,7 @@ import {
   ShieldCheck,
   ArrowRight,
   Download,
+  Camera,
 } from 'lucide-react';
 
 interface JudgeScenariosModalProps {
@@ -84,6 +85,16 @@ export default function JudgeScenariosModal({
       channel: 'domain' as const,
       desc: 'Adversary uses backslash evasion (https:\\) combined with Amazon trademark combisquatting (amazon + ind) on non-authoritative TLD (.co).',
       expectedOutput: 'Score 100 / 100 (Critical Risk) &bull; Brand Impersonation (+45), Backslash Evasion (+30), Combisquatting (+25), TLD Mismatch (+20)',
+    },
+    {
+      id: 'scen-6',
+      title: 'Scenario F: Screenshot Forensics & Vision Threat Extraction',
+      category: 'AI Vision & Screenshot Forensics',
+      icon: Camera,
+      candidate: 'https://threatl3ns-login-portal.xyz/auth?step=verify',
+      channel: 'domain' as const,
+      desc: 'Screenshot image of spoofed SSO corporate portal containing address bar homoglyph (threatl3ns.xyz), cloned logo mark, and credential harvest form.',
+      expectedOutput: 'Score 89+ (High/Critical) &bull; Optical URL Extraction (+35), Address Bar Homoglyph (+30), Cloned SSO Layout (+25)',
     },
   ];
 
