@@ -1,0 +1,207 @@
+// ThreatLens — Prisma Schema
+// SQLite for local dev, easily swappable to PostgreSQL
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id             String   @id @default(cuid())
+  email          String   @unique
+  name           String
+  passwordHash   String
+  role           String   @default("analyst") // analyst, admin
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  sessions       Session[]
+  investigations Investigation[] @relation("AssignedInvestigations")
+  analystNotes   AnalystNote[]
+  auditLogs      AuditLog[]
+}
+
+model Session {
+  id        String   @id @default(cuid())
+  userId    String
+  token     String   @unique
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Brand {
+  id          String   @id @default(cuid())
+  name        String
+  description String?
+  industry    String?
+  website     String?
+  logoUrl     String?
+  keywords    String?  // JSON array stored as string
+  aliases     String?  // JSON array stored as string
+  isDemo      Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  officialAssets OfficialAsset[]
+  findings       Finding[]
+  investigations Investigation[]
+}
+
+model OfficialAsset {
+  id        String   @id @default(cuid())
+  brandId   String
+  type      String   // domain, social_handle, app_name, app_package, publisher
+  platform  String?  // instagram, facebook, x, youtube, google_play, app_store
+  value     String
+  verified  Boolean  @default(true)
+  createdAt DateTime @default(now())
+
+  brand Brand @relation(fields: [brandId], references: [id], onDelete: Cascade)
+
+  @@index([brandId])
+  @@index([type, value])
+}
+
+model Finding {
+  id              String   @id @default(cuid())
+  brandId         String
+  type            String   // social_profile, app_listing, domain
+  platform        String?
+  sourceUrl       String?
+  handle          String?
+  displayName     String?
+  description     String?
+  metadata        String?  // JSON string for extra fields
+  riskScore       Int      @default(0)
+  riskLevel       String   @default("low") // low, medium, high, critical
+  status          String   @default("new") // new, reviewed, false_positive, confirmed
+  isDemo          Boolean  @default(false)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  brand          Brand           @relation(fields: [brandId], references: [id], onDelete: Cascade)
+  riskSignals    RiskSignal[]
+  investigations Investigation[] @relation("InvestigationFindings")
+  evidence       Evidence[]
+
+  @@index([brandId])
+  @@index([type])
+  @@index([riskLevel])
+  @@index([status])
+}
+
+model RiskSignal {
+  id          String @id @default(cuid())
+  findingId   String
+  signalType  String // handle_similarity, lookalike_chars, suspicious_keywords, etc.
+  description String
+  weight      Int    @default(0)
+  evidence    String? // supporting detail
+  isPositive  Boolean @default(false) // true = reduces risk (e.g., matches official)
+
+  finding Finding @relation(fields: [findingId], references: [id], onDelete: Cascade)
+
+  @@index([findingId])
+}
+
+model Investigation {
+  id          String   @id @default(cuid())
+  caseNumber  String   @unique
+  title       String
+  description String?
+  brandId     String
+  severity    String   @default("medium") // low, medium, high, critical
+  status      String   @default("new") // new, under_review, confirmed_suspicious, false_positive, resolved
+  assigneeId  String?
+  isDemo      Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  brand    Brand  @relation(fields: [brandId], references: [id], onDelete: Cascade)
+  assignee User?  @relation("AssignedInvestigations", fields: [assigneeId], references: [id])
+
+  findings     Finding[]      @relation("InvestigationFindings")
+  evidence     Evidence[]
+  analystNotes AnalystNote[]
+  auditLogs    AuditLog[]     @relation("InvestigationAuditLogs")
+
+  @@index([brandId])
+  @@index([status])
+  @@index([severity])
+}
+
+model Evidence {
+  id              String   @id @default(cuid())
+  investigationId String?
+  findingId       String?
+  type            String   // url, social_profile, app_listing, screenshot, note, reputation_result, ai_summary
+  source          String?
+  description     String?
+  content         String?  // JSON string for structured data
+  contentHash     String?  // SHA-256 hash
+  collectedAt     DateTime @default(now())
+
+  investigation Investigation? @relation(fields: [investigationId], references: [id], onDelete: Cascade)
+  finding       Finding?       @relation(fields: [findingId], references: [id], onDelete: Cascade)
+
+  @@index([investigationId])
+  @@index([findingId])
+}
+
+model AnalystNote {
+  id              String   @id @default(cuid())
+  investigationId String
+  authorId        String
+  content         String
+  createdAt       DateTime @default(now())
+
+  investigation Investigation @relation(fields: [investigationId], references: [id], onDelete: Cascade)
+  author        User          @relation(fields: [authorId], references: [id])
+
+  @@index([investigationId])
+}
+
+model AuditLog {
+  id              String   @id @default(cuid())
+  userId          String?
+  investigationId String?
+  action          String   // created, updated, status_changed, note_added, etc.
+  entityType      String   // brand, finding, investigation, evidence, integration
+  entityId        String
+  details         String?  // JSON string
+  timestamp       DateTime @default(now())
+
+  user          User?          @relation(fields: [userId], references: [id])
+  investigation Investigation? @relation("InvestigationAuditLogs", fields: [investigationId], references: [id], onDelete: Cascade)
+
+  @@index([entityType, entityId])
+  @@index([userId])
+  @@index([timestamp])
+}
+
+model IntegrationConfig {
+  id         String   @id @default(cuid())
+  provider   String   @unique // virustotal, openai, etc.
+  name       String
+  purpose    String
+  isEnabled  Boolean  @default(false)
+  status     String   @default("not_configured") // not_configured, configured, connected, error
+  lastCheck  DateTime?
+  config     String?  // JSON (no secrets - secrets in env vars)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+}
+
+model WorkspaceSettings {
+  id                String  @id @default("default")
+  name              String  @default("ThreatLens Workspace")
+  demoMode          Boolean @default(true)
+  defaultThreshold  Int     @default(50)
+  aiProvider        String? // openai, anthropic, etc.
+}

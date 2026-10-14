@@ -1,0 +1,148 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap');
+@import "tailwindcss";
+
+:root {
+  --background: #F7F9FC;
+  --foreground: #0F172A;
+  --card-bg: #FFFFFF;
+  --card-border: #E2E8F0;
+  --primary-accent: #4F6BED;
+  --primary-hover: #3E57D0;
+  --secondary-accent: #20B8C4;
+  --secondary-hover: #179CA7;
+  --text-primary: #0F172A;
+  --text-muted: #64748B;
+  --danger-red: #EF4444;
+  --warning-amber: #F59E0B;
+  --success-green: #10B981;
+}
+
+body {
+  background-color: #F7F9FC;
+  color: #0F172A;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  background-image:
+    radial-gradient(circle at 10% 10%, rgba(79, 107, 237, 0.04) 0%, transparent 40%),
+    radial-gradient(circle at 90% 90%, rgba(32, 184, 196, 0.05) 0%, transparent 40%),
+    linear-gradient(to bottom, #F7F9FC, #F1F5F9);
+  min-height: 100vh;
+}
+
+/* Custom Scrollbars (Light SaaS Theme) */
+::-webkit-scrollbar {
+  width: 7px;
+  height: 7px;
+}
+::-webkit-scrollbar-track {
+  background: #F1F5F9;
+}
+::-webkit-scrollbar-thumb {
+  background: #CBD5E1;
+  border-radius: 9999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #94A3B8;
+}
+
+/* SaaS Card & Glass Styles */
+.saas-card {
+  background: #FFFFFF;
+  border: 1px solid #E2E8F0;
+  border-radius: 1rem;
+  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.05), 0 1px 2px -1px rgba(0, 0, 0, 0.05);
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.saas-card-hover:hover {
+  border-color: #CBD5E1;
+  transform: translateY(-2px);
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.08), 0 8px 10px -6px rgba(0, 0, 0, 0.04);
+}
+
+/* Subtle Accent Glows for Light Theme */
+.glow-primary {
+  box-shadow: 0 0 20px -3px rgba(79, 107, 237, 0.25);
+}
+.glow-secondary {
+  box-shadow: 0 0 20px -3px rgba(32, 184, 196, 0.25);
+}
+.glow-danger {
+  box-shadow: 0 0 20px -3px rgba(239, 68, 68, 0.25);
+}
+.glow-success {
+  box-shadow: 0 0 20px -3px rgba(16, 185, 129, 0.25);
+}
+
+/* Scan Line Animation for URL Analysis */
+@keyframes scan-laser {
+  0% { transform: translateY(0%); opacity: 0.8; }
+  50% { transform: translateY(100%); opacity: 1; }
+  100% { transform: translateY(0%); opacity: 0.8; }
+}
+
+.animate-scan-line {
+  animation: scan-laser 2s infinite ease-in-out;
+}
+
+/* Radar pulse animation for light theme */
+@keyframes radar-pulse-light {
+  0% { transform: scale(0.95); opacity: 0.9; }
+  50% { transform: scale(1.15); opacity: 0.4; }
+  100% { transform: scale(0.95); opacity: 0.9; }
+}
+
+.animate-radar-light {
+  animation: radar-pulse-light 2s infinite ease-in-out;
+}
+
+/* Danger alert pulse */
+@keyframes alert-pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.7; transform: scale(1.03); }
+}
+
+.animate-alert-pulse {
+  animation: alert-pulse 1.8s infinite ease-in-out;
+}
+
+/* Slide up and fade in */
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fade-in-up {
+  animation: fadeInUp 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+/* Accessibility: Reduced motion support */
+@media (prefers-reduced-motion: reduce) {
+  *, ::before, ::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* Print-friendly scan report styling */
+@media print {
+  body {
+    background: #FFFFFF !important;
+    color: #000000 !important;
+  }
+  header, footer, button, nav {
+    display: none !important;
+  }
+  .saas-card {
+    border: 1px solid #000000 !important;
+    box-shadow: none !important;
+    page-break-inside: avoid;
+  }
+}
