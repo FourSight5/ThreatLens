@@ -1,0 +1,8 @@
+[build]
+  command = "prisma generate && next build"
+
+[build.environment]
+  NODE_VERSION = "20"
+  DATABASE_URL = "file:./prisma/dev.db"
+  PNPM_FLAGS = "--no-frozen-lockfile"
+  NPM_FLAGS = "--legacy-peer-deps"

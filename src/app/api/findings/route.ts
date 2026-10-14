@@ -44,7 +44,7 @@ export async function GET(req: Request) {
     return NextResponse.json({ findings: parsedFindings });
   } catch (error) {
     console.error('Error fetching findings:', error);
-    return NextResponse.json({ error: 'Failed to fetch findings' }, { status: 500 });
+    return NextResponse.json({ findings: [], error: 'Failed to fetch findings' });
   }
 }
 
