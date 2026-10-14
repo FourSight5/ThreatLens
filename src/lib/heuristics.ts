@@ -330,6 +330,44 @@ export const GLOBAL_POPULAR_BRANDS: GlobalBrandProfile[] = [
   },
 ];
 
+// User-Generated Content (UGC) Social & Media Platforms
+// On these domains, the root is an authoritative portal, but user profiles/paths (/handle) are external unvetted accounts
+export const UGC_SOCIAL_DOMAINS: Record<string, string> = {
+  'instagram.com': 'Instagram',
+  'facebook.com': 'Facebook',
+  'fb.com': 'Facebook',
+  'x.com': 'X / Twitter',
+  'twitter.com': 'Twitter',
+  't.me': 'Telegram',
+  'telegram.org': 'Telegram',
+  'telegram.me': 'Telegram',
+  'linkedin.com': 'LinkedIn',
+  'youtube.com': 'YouTube',
+  'tiktok.com': 'TikTok',
+  'reddit.com': 'Reddit',
+  'threads.net': 'Threads',
+  'discord.gg': 'Discord',
+  'github.com': 'GitHub',
+};
+
+// Known URL shorteners that conceal destination endpoints
+export const KNOWN_URL_SHORTENERS = [
+  'bit.ly',
+  'tinyurl.com',
+  't.co',
+  'is.gd',
+  'buff.ly',
+  'ow.ly',
+  'cutt.ly',
+  'rebrand.ly',
+  'shorturl.at',
+  'goo.gl',
+  'bitly.com',
+  'rb.gy',
+  't.ly',
+  'bl.ink',
+];
+
 // Homoglyph & Leetspeak substitution map
 const HOMOGLYPH_MAP: Record<string, string> = {
   '0': 'o',
@@ -425,14 +463,21 @@ export interface NormalizedUrlResult {
   hostname: string;
   pathname: string;
   search: string;
+  port?: string;
   isSsrf: boolean;
   isValid: boolean;
   hadBackslash: boolean;
   hadMalformedProtocol: boolean;
+  hasValidTld: boolean;
+  isUgcSocialPlatform: boolean;
+  ugcPlatformName?: string;
+  extractedSocialHandle?: string;
+  isUrlShortener: boolean;
+  isInsecureHttp: boolean;
   error?: string;
 }
 
-// Robust URL normalizer & input validator handling backslashes and evasion techniques
+// Robust URL normalizer & input validator handling backslashes, evasion techniques, and UGC platform profiles
 export function normalizeUrlInput(candidate: string, channel: 'social' | 'app' | 'domain'): NormalizedUrlResult {
   const trimmed = candidate.trim();
   if (!trimmed) {
@@ -446,25 +491,37 @@ export function normalizeUrlInput(candidate: string, channel: 'social' | 'app' |
       isValid: false,
       hadBackslash: false,
       hadMalformedProtocol: false,
+      hasValidTld: false,
+      isUgcSocialPlatform: false,
+      isUrlShortener: false,
+      isInsecureHttp: false,
       error: 'Candidate input string cannot be empty',
     };
   }
 
   // Detect backslash obfuscation (e.g. https:\ or amazon\ind or \\)
   const hadBackslash = /\\/.test(trimmed);
+  const isInsecureHttp = /^http:\/\//i.test(trimmed);
 
-  // Social handles and app packages don't require http URL parsing
-  if (channel === 'social' && trimmed.startsWith('@')) {
+  // Social handles entered directly without URL scheme
+  if (channel === 'social' && !trimmed.includes('://') && !trimmed.includes(':\\')) {
+    const cleanHandle = trimmed.replace(/^@/, '').trim();
     return {
-      normalizedUrl: `https://x.com/${trimmed.slice(1)}`,
-      displayUrl: trimmed,
+      normalizedUrl: `https://x.com/${cleanHandle}`,
+      displayUrl: `@${cleanHandle}`,
       hostname: 'x.com',
-      pathname: `/${trimmed.slice(1)}`,
+      pathname: `/${cleanHandle}`,
       search: '',
       isSsrf: false,
       isValid: true,
       hadBackslash,
       hadMalformedProtocol: false,
+      hasValidTld: true,
+      isUgcSocialPlatform: true,
+      ugcPlatformName: 'Social Profile',
+      extractedSocialHandle: cleanHandle,
+      isUrlShortener: false,
+      isInsecureHttp: false,
     };
   }
 
@@ -479,6 +536,10 @@ export function normalizeUrlInput(candidate: string, channel: 'social' | 'app' |
       isValid: true,
       hadBackslash,
       hadMalformedProtocol: false,
+      hasValidTld: true,
+      isUgcSocialPlatform: false,
+      isUrlShortener: false,
+      isInsecureHttp: false,
     };
   }
 
@@ -499,7 +560,7 @@ export function normalizeUrlInput(candidate: string, channel: 'social' | 'app' |
     cleanBody = cleanBody.slice(0, queryIdx);
   }
 
-  // Now cleanBody is e.g. "amazonind.co" or "amazonind.co/verify"
+  // Now cleanBody is e.g. "amazonind.co" or "amazonind.co/verify" or "instagram.com/its_sneh234/"
   let hostname = '';
   let pathname = '';
   const slashIdx = cleanBody.indexOf('/');
@@ -514,6 +575,14 @@ export function normalizeUrlInput(candidate: string, channel: 'social' | 'app' |
   // Remove trailing slashes and spaces from hostname
   hostname = hostname.replace(/\/+$/, '');
 
+  // Extract port if specified (e.g. host:8080)
+  let port: string | undefined = undefined;
+  if (hostname.includes(':')) {
+    const colonParts = hostname.split(':');
+    hostname = colonParts[0];
+    port = colonParts[1];
+  }
+
   // If input was empty or invalid after stripping
   if (!hostname) {
     return {
@@ -526,6 +595,10 @@ export function normalizeUrlInput(candidate: string, channel: 'social' | 'app' |
       isValid: false,
       hadBackslash,
       hadMalformedProtocol,
+      hasValidTld: false,
+      isUgcSocialPlatform: false,
+      isUrlShortener: false,
+      isInsecureHttp,
       error: 'Invalid URL syntax. Please enter a valid URL, hostname, or handle.',
     };
   }
@@ -533,21 +606,64 @@ export function normalizeUrlInput(candidate: string, channel: 'social' | 'app' |
   // Check SSRF
   if (isPrivateOrLoopbackHost(hostname)) {
     return {
-      normalizedUrl: `https://${hostname}${pathname}${query}`,
-      displayUrl: `${hostname}${pathname}`,
+      normalizedUrl: `https://${hostname}${port ? ':' + port : ''}${pathname}${query}`,
+      displayUrl: `${hostname}${port ? ':' + port : ''}${pathname}`,
       hostname,
       pathname,
       search: query,
+      port,
       isSsrf: true,
       isValid: false,
       hadBackslash,
       hadMalformedProtocol,
+      hasValidTld: false,
+      isUgcSocialPlatform: false,
+      isUrlShortener: false,
+      isInsecureHttp,
       error: 'SSRF Protection Triggered: Scanning internal, private network addresses or cloud metadata endpoints is prohibited.',
     };
   }
 
-  const normalizedUrl = `https://${hostname}${pathname}${query}`;
-  const displayUrl = `${hostname}${pathname}`;
+  // Check valid TLD (must have dot followed by 2+ letters or be valid IPv4)
+  const isIpv4 = /^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$/.test(hostname);
+  const hasDomainTld = /^[a-z0-9-]+(\.[a-z0-9-]+)*\.[a-z]{2,}$/i.test(hostname);
+  const hasValidTld = isIpv4 || hasDomainTld;
+
+  // Check UGC Social Media Platform & extract user profile handle
+  let isUgcSocialPlatform = false;
+  let ugcPlatformName: string | undefined = undefined;
+  let extractedSocialHandle: string | undefined = undefined;
+
+  for (const [ugcDomain, platName] of Object.entries(UGC_SOCIAL_DOMAINS)) {
+    if (hostname === ugcDomain || hostname.endsWith('.' + ugcDomain)) {
+      isUgcSocialPlatform = true;
+      ugcPlatformName = platName;
+
+      const pathSegments = pathname.split('/').filter(Boolean);
+      if (pathSegments.length > 0) {
+        const first = pathSegments[0].toLowerCase();
+        const nonHandlePaths = [
+          'about', 'legal', 'help', 'terms', 'privacy', 'explore', 'direct',
+          'accounts', 'developer', 'settings', 'support', 'api', 'en', 'login', 'signup', 'register',
+          'feed', 'messages', 'notifications', 'home', 'reel', 'reels', 'stories'
+        ];
+        if (!nonHandlePaths.includes(first)) {
+          if (['in', 'c', 'channel', 'user'].includes(first) && pathSegments.length > 1) {
+            extractedSocialHandle = pathSegments[1].replace(/^@/, '');
+          } else {
+            extractedSocialHandle = pathSegments[0].replace(/^@/, '');
+          }
+        }
+      }
+      break;
+    }
+  }
+
+  // Check URL shortener
+  const isUrlShortener = KNOWN_URL_SHORTENERS.some(s => hostname === s || hostname.endsWith('.' + s));
+
+  const normalizedUrl = `${isInsecureHttp ? 'http' : 'https'}://${hostname}${port ? ':' + port : ''}${pathname}${query}`;
+  const displayUrl = `${hostname}${port ? ':' + port : ''}${pathname}`;
 
   return {
     normalizedUrl,
@@ -555,10 +671,17 @@ export function normalizeUrlInput(candidate: string, channel: 'social' | 'app' |
     hostname,
     pathname,
     search: query,
+    port,
     isSsrf: false,
     isValid: true,
     hadBackslash,
     hadMalformedProtocol,
+    hasValidTld,
+    isUgcSocialPlatform,
+    ugcPlatformName,
+    extractedSocialHandle,
+    isUrlShortener,
+    isInsecureHttp,
   };
 }
 
@@ -579,11 +702,19 @@ export function checkBaselineExclusion(candidate: string, baseline: BrandBaselin
     }
   }
 
-  // 2. Social handles check
+  // 2. Social handles check (Checks candidate, candNorm, and extracted handle from UGC platform URLs)
+  const handleCandidates = [
+    urlInfo.extractedSocialHandle,
+    candNorm.replace(/^@/, ''),
+    candidate.trim().toLowerCase().replace(/^@/, ''),
+  ].filter(Boolean) as string[];
+
   for (const handle of baseline.officialSocialHandles) {
     const hNorm = handle.trim().toLowerCase().replace(/^@/, '');
-    if (candNorm === hNorm || candidate.trim().toLowerCase() === handle.trim().toLowerCase()) {
-      return { isExcluded: true, reason: `Exact match with verified official social handle: "${handle}"` };
+    for (const hc of handleCandidates) {
+      if (hc.toLowerCase() === hNorm) {
+        return { isExcluded: true, reason: `Exact match with verified official social handle: "${handle}"` };
+      }
     }
   }
 
@@ -725,6 +856,14 @@ export function analyzeThreatCandidate(
         od => hostClean === od || hostClean.endsWith('.' + od)
       );
       if (isOfficialMatch && !urlInfo.hadBackslash && !urlInfo.hadMalformedProtocol) {
+        // CRITICAL SECURITY RULE: If this domain is a User-Generated Content (UGC) social media platform
+        // (e.g. instagram.com, facebook.com, x.com, telegram) and the URL contains an account handle or profile path
+        // (e.g. /its_sneh234/), this is USER CONTENT, NOT an official corporate landing page!
+        // DO NOT EXEMPT USER PROFILES!
+        if (urlInfo.isUgcSocialPlatform && urlInfo.extractedSocialHandle) {
+          break; // Fall through to comprehensive social profile security evaluation!
+        }
+
         return {
           candidate,
           submittedUrl: candidate,
@@ -795,8 +934,322 @@ export function analyzeThreatCandidate(
     });
   }
 
-  // CHANNEL: Domain / Web URL
-  if (channel === 'domain') {
+  // HEURISTIC: Obfuscated URL Shorteners
+  if (urlInfo.isUrlShortener) {
+    signals.push({
+      signalType: 'cloaked_url_shortener',
+      description: `Cloaked URL Shortener Service: "${urlInfo.hostname}" obscures true destination domain and payload`,
+      weight: 45,
+      isPositive: false,
+    });
+    flaggedReasons.push({
+      id: 'cloaked_url_shortener',
+      indicatorName: 'Obfuscated URL Shortener Service',
+      detected: `Domain "${urlInfo.hostname}" is a third-party link shortening redirector.`,
+      whyRisky: 'Shortened links prevent upfront security inspection, hide the true server IP, and are the primary delivery vector for SMS (smishing) and WhatsApp phishing campaigns.',
+      severity: 'high',
+      recommendedAction: 'Do not open shortened links directly. Expand the URL using safe redirect expanders before analysis.',
+      category: 'heuristic',
+    });
+    harmfulConsequences.push({
+      id: 'shortener_redirection',
+      title: 'Cloaked Destination & Uninspected Redirect',
+      tag: 'Smishing Vector',
+      description: 'Conceals malicious target web pages from standard gateway filters and mobile security shields.',
+      severity: 'high',
+      icon: 'ExternalLink',
+    });
+  }
+
+  // HEURISTIC: Malformed or Incomplete Domain (e.g. "aman", "test", "facebook")
+  if (!urlInfo.hasValidTld && channel !== 'app' && !urlInfo.extractedSocialHandle) {
+    signals.push({
+      signalType: 'invalid_or_incomplete_domain',
+      description: `Incomplete / Non-Routable Domain: Target "${candClean}" lacks a valid Top-Level Domain (.com, .in, etc.) or public routing structure`,
+      weight: 55,
+      isPositive: false,
+    });
+    flaggedReasons.push({
+      id: 'invalid_or_incomplete_domain',
+      indicatorName: 'Invalid / Incomplete Domain Hostname',
+      detected: `Target "${candClean}" is not a fully-qualified domain name (missing a recognized TLD like .com, .in, .org).`,
+      whyRisky: 'Incomplete or malformed domain entries cannot resolve over the public Internet and often indicate truncated phishing vectors, internal host spoofing, or deceptive evasion attempts.',
+      severity: 'high',
+      recommendedAction: 'Verify the complete intended domain name including the public top-level extension before proceeding.',
+      category: 'verified',
+    });
+    harmfulConsequences.push({
+      id: 'malformed_url_risk',
+      title: 'Non-Routable & Truncated Phishing Payload',
+      tag: 'Evasion Vector',
+      description: 'Attackers distribute truncated or non-routable syntax to evade automated domain reputation feeds.',
+      severity: 'high',
+      icon: 'ShieldAlert',
+    });
+  }
+
+  // SOCIAL PROFILE EVALUATION (Either channel === 'social' OR UGC platform URL like instagram.com/its_sneh234/)
+  const isSocialEvaluation = channel === 'social' || (urlInfo.isUgcSocialPlatform && Boolean(urlInfo.extractedSocialHandle));
+
+  if (isSocialEvaluation) {
+    const targetHandle = (urlInfo.extractedSocialHandle || candClean).replace(/^@/, '').trim();
+    const targetPlatform = urlInfo.ugcPlatformName || extraContext?.platform || 'Social Platform';
+
+    // 1. Unverified profile outside baseline
+    const isBaselineVerifiedHandle = baseline.officialSocialHandles.some(
+      h => h.trim().toLowerCase().replace(/^@/, '') === targetHandle.toLowerCase()
+    );
+
+    if (!isBaselineVerifiedHandle) {
+      signals.push({
+        signalType: 'unverified_external_social_profile',
+        description: `Unverified ${targetPlatform} Profile: Account "@${targetHandle}" is not registered in your verified Brand Baseline`,
+        weight: 30,
+        isPositive: false,
+      });
+      flaggedReasons.push({
+        id: 'unverified_external_social_profile',
+        indicatorName: `Unverified ${targetPlatform} Profile Account`,
+        detected: `Handle "@${targetHandle}" on ${targetPlatform} is not registered in your corporate Brand Baseline roster.`,
+        whyRisky: 'Unvetted external social accounts can impersonate organization representatives, solicit unauthorized customer payments, or distribute malicious landing links.',
+        severity: 'high',
+        recommendedAction: 'Verify account authenticity against company corporate social media directory before direct interaction.',
+        category: 'heuristic',
+      });
+    }
+
+    // 2. Numeric suffix padding (e.g. its_sneh234 -> 234)
+    if (/\d{2,}$/.test(targetHandle)) {
+      const numericPart = targetHandle.match(/\d+$/)?.[0];
+      signals.push({
+        signalType: 'handle_numeric_padding',
+        description: `Numeric Suffix Padding: Handle "@${targetHandle}" ends with numeric padding digits "${numericPart}" (clone/bot account indicator)`,
+        weight: 25,
+        isPositive: false,
+      });
+      flaggedReasons.push({
+        id: 'handle_numeric_padding',
+        indicatorName: 'Numeric Suffix Padding Pattern',
+        detected: `Handle appends consecutive numeric digits ("${numericPart}").`,
+        whyRisky: 'Adversaries and bot operators append numbers to desired usernames when legitimate handles are unavailable, crafting lookalike clone profiles to deceive victims.',
+        severity: 'high',
+        recommendedAction: 'Cross-check account creation date and follower authenticity on the platform.',
+        category: 'heuristic',
+      });
+      harmfulConsequences.push({
+        id: 'clone_profile',
+        title: 'Automated Clone Account & Social Engineering',
+        tag: 'Identity Risk',
+        description: 'Rogue accounts using numeric padding are frequently utilized in bot networks and follower scams.',
+        severity: 'high',
+        icon: 'ShieldAlert',
+      });
+    }
+
+    // 3. Pseudo-official prefix or suffix (e.g. its_, the_, real_, official_)
+    const pseudoPrefixes = ['its_', 'the_', 'real_', 'official_', 'vip_', 'original_', 'agent_', 'help_', 'support_', 'desk_'];
+    const matchedPseudo = pseudoPrefixes.find(p => targetHandle.toLowerCase().startsWith(p) || targetHandle.toLowerCase().endsWith('_official') || targetHandle.toLowerCase().endsWith('_team'));
+    if (matchedPseudo) {
+      signals.push({
+        signalType: 'pseudo_official_prefix',
+        description: `Deceptive Identity Affirmation: Handle utilizes affirmative modifier "${matchedPseudo}" (common social impersonation pattern)`,
+        weight: 25,
+        isPositive: false,
+      });
+      flaggedReasons.push({
+        id: 'pseudo_official_prefix',
+        indicatorName: 'Deceptive Identity Affirmation Prefix',
+        detected: `Handle starts or ends with identity-affirming modifier ("${matchedPseudo}").`,
+        whyRisky: 'Attackers create clone profiles with affirmative prefixes like "its_" or "official_" to build immediate, false credibility during social engineering outreach.',
+        severity: 'high',
+        recommendedAction: 'Report suspicious profile to platform trust and safety team for trademark or impersonation review.',
+        category: 'heuristic',
+      });
+    }
+
+    // 4. Monitored Brand Keyword or Global Brand Impersonation in handle
+    const hasBrandStem = targetHandle.toLowerCase().includes(brandNorm) || baseline.monitoredKeywords.some(kw => targetHandle.toLowerCase().includes(kw.toLowerCase()));
+    const matchedGlobalInHandle = GLOBAL_POPULAR_BRANDS.find(b => targetHandle.toLowerCase().includes(b.name));
+
+    if (hasBrandStem || matchedGlobalInHandle) {
+      const brandNameUsed = matchedGlobalInHandle ? matchedGlobalInHandle.name.toUpperCase() : baseline.name;
+      signals.push({
+        signalType: 'brand_stem_impersonation',
+        description: `Brand Keyword Impersonation: Handle "@${targetHandle}" incorporates trademarked corporate brand stem "${brandNameUsed}"`,
+        weight: 45,
+        isPositive: false,
+      });
+      flaggedReasons.push({
+        id: 'brand_stem_impersonation',
+        indicatorName: `Brand Keyword Impersonation in Handle (${brandNameUsed})`,
+        detected: `Handle contains corporate brand stem "${brandNameUsed}".`,
+        whyRisky: 'Deceptive handles trick followers into assuming official company affiliation, enabling credential theft.',
+        severity: 'critical',
+        recommendedAction: 'File an impersonation report with platform Trust & Safety teams using official trademark credentials.',
+        category: 'heuristic',
+      });
+      harmfulConsequences.push({
+        id: 'brand_impersonation',
+        title: 'Brand Impersonation & Customer Trust Erosion',
+        tag: 'Reputation Risk',
+        description: 'Attackers create convincing social profiles to deceive customers and damage brand reputation.',
+        severity: 'critical',
+        icon: 'ShieldAlert',
+      });
+    }
+
+    // 5. Customer support lures
+    const supportLures = ['support', 'help', 'desk', 'bot', 'care', 'assist', 'service', 'ticket', 'verify', 'auth'];
+    const matchedLure = supportLures.find(lure => targetHandle.toLowerCase().includes(lure) || (extraContext?.bio && extraContext.bio.toLowerCase().includes(lure)));
+    if (matchedLure) {
+      signals.push({
+        signalType: 'support_lure',
+        description: `Customer support lure wording detected: "${matchedLure}" (high impersonation vector)`,
+        weight: 30,
+        isPositive: false,
+      });
+      flaggedReasons.push({
+        id: 'support_lure',
+        indicatorName: 'Counterfeit Customer Support Lure',
+        detected: `Target uses support terminology: "${matchedLure}".`,
+        whyRisky: 'Threat actors impersonate support desks to solicit passwords, 2FA codes, or remote desktop access from distressed users.',
+        severity: 'critical',
+        recommendedAction: 'Issue a customer security bulletin clarifying that official support never asks for credentials via direct messages.',
+        category: 'heuristic',
+      });
+      harmfulConsequences.push({
+        id: 'credential_theft',
+        title: 'Credential Theft & Account Takeover',
+        tag: 'Direct Attack',
+        description: 'Victims are lured into sending login credentials or OTP codes under the guise of account verification.',
+        severity: 'critical',
+        icon: 'Lock',
+      });
+    }
+
+    // 6. Promotional incentive cues
+    const promoLures = ['airdrop', 'rewards', 'reward', 'bonus', 'giveaway', 'claim', 'promo', 'free', 'crypto', 'earn', 'win'];
+    const matchedPromo = promoLures.find(lure => targetHandle.toLowerCase().includes(lure) || (extraContext?.bio && extraContext.bio.toLowerCase().includes(lure)));
+    if (matchedPromo) {
+      signals.push({
+        signalType: 'promo_lure',
+        description: `Promotional incentive cue detected: "${matchedPromo}" (phishing giveaway indicator)`,
+        weight: 25,
+        isPositive: false,
+      });
+      flaggedReasons.push({
+        id: 'promo_lure',
+        indicatorName: 'Fraudulent Incentive / Giveaway Lure',
+        detected: `Promotional trigger detected: "${matchedPromo}".`,
+        whyRisky: 'Fake giveaway campaigns manipulate urgency to persuade users to connect crypto wallets or enter credit card details.',
+        severity: 'high',
+        recommendedAction: 'Submit DMCA and platform fraud takedown notices targeting the promotional campaign links.',
+        category: 'heuristic',
+      });
+      harmfulConsequences.push({
+        id: 'financial_fraud',
+        title: 'Financial Fraud & Unauthorized Charges',
+        tag: 'Monetary Loss',
+        description: 'Fake prize claims trick victims into paying advance processing fees or authorizing rogue payment transactions.',
+        severity: 'high',
+        icon: 'AlertTriangle',
+      });
+    }
+
+    // 7. VIP Executive impersonation
+    for (const vip of baseline.vipExecutives) {
+      const vipClean = vip.split('(')[0].trim().toLowerCase();
+      if (targetHandle.toLowerCase().includes(vipClean.replace(/\s+/g, '')) || candNormalized.includes(vipClean) || (extraContext?.bio && extraContext.bio.toLowerCase().includes(vipClean))) {
+        signals.push({
+          signalType: 'vip_impersonation',
+          description: `VIP Executive match: Impersonation of monitored leadership persona "${vip}"`,
+          weight: 30,
+          isPositive: false,
+        });
+        flaggedReasons.push({
+          id: 'vip_impersonation',
+          indicatorName: 'Executive / VIP Identity Theft',
+          detected: `Direct impersonation of monitored executive: "${vip}".`,
+          whyRisky: 'Executive spoofing is used in targeted Business Email Compromise (BEC) and wire transfer fraud.',
+          severity: 'critical',
+          recommendedAction: 'Escalate to platform executive protection desk for urgent verified badge revocation or account suspension.',
+          category: 'verified',
+        });
+        harmfulConsequences.push({
+          id: 'identity_theft',
+          title: 'Executive Identity Misuse & BEC Risk',
+          tag: 'Targeted Fraud',
+          description: 'Attackers misuse executive personas to authorize fraudulent corporate transactions or deceive employees.',
+          severity: 'critical',
+          icon: 'ShieldAlert',
+        });
+        break;
+      }
+    }
+
+    // 8. Authority modifier suffixes
+    const authorityModifiers = ['_official', 'official', '_bot', 'bot', '_team', 'team', '_corp', 'corp'];
+    const matchedAuth = authorityModifiers.find(mod => targetHandle.toLowerCase().endsWith(mod) || targetHandle.toLowerCase().includes(mod));
+    if (matchedAuth) {
+      signals.push({
+        signalType: 'authority_modifier',
+        description: `Authority suffix modifier attached to handle: "${matchedAuth}"`,
+        weight: 15,
+        isPositive: false,
+      });
+      flaggedReasons.push({
+        id: 'authority_modifier',
+        indicatorName: 'Deceptive Authority Modifier Suffix',
+        detected: `Handle appends authority modifier "${matchedAuth}".`,
+        whyRisky: 'Affixing "official" or "team" to unverified accounts creates false trust to bypass basic user scrutiny.',
+        severity: 'medium',
+        recommendedAction: 'Publicize official verified social directory to help users distinguish authentic channels.',
+        category: 'heuristic',
+      });
+    }
+
+    // 9. Bio credential harvesting request
+    if (extraContext?.bio) {
+      const bioLower = extraContext.bio.toLowerCase();
+      if (bioLower.includes('dm') && (bioLower.includes('pass') || bioLower.includes('key') || bioLower.includes('wallet') || bioLower.includes('login') || bioLower.includes('ticket'))) {
+        signals.push({
+          signalType: 'credential_harvesting_bio',
+          description: 'Profile bio contains direct credential or private key solicitation instruction',
+          weight: 25,
+          isPositive: false,
+        });
+        flaggedReasons.push({
+          id: 'credential_harvesting_bio',
+          indicatorName: 'Direct Credential Solicitation in Bio',
+          detected: 'Bio explicitly instructs users to DM private keys, login tokens, or account passwords.',
+          whyRisky: 'Legitimate organizations never instruct users to direct message sensitive security credentials.',
+          severity: 'critical',
+          recommendedAction: 'Report account immediately and caution users against direct message interactions.',
+          category: 'heuristic',
+        });
+      }
+      if (bioLower.includes('bit.ly') || bioLower.includes('tinyurl') || bioLower.includes('t.me') || bioLower.includes('linktr.ee')) {
+        signals.push({
+          signalType: 'shortened_redirect_bio',
+          description: 'Bio incorporates off-platform shortened link or external redirect hub',
+          weight: 15,
+          isPositive: false,
+        });
+        flaggedReasons.push({
+          id: 'shortened_redirect_bio',
+          indicatorName: 'Obfuscated Off-Platform Shortened Link',
+          detected: 'Profile uses link shortener or external redirect page in biography.',
+          whyRisky: 'Shortened URLs conceal malicious destination landing pages and bypass platform domain filters.',
+          severity: 'medium',
+          recommendedAction: 'Analyze expanded redirect destination URL using ThreatLens deep domain scanner.',
+          category: 'heuristic',
+        });
+      }
+    }
+  }
+
+  // DOMAIN / WEB URL CHANNEL (When not a UGC social profile)
+  if (channel === 'domain' && !isSocialEvaluation) {
     const host = urlInfo.hostname;
     const path = urlInfo.pathname || '';
     const cleanHost = host.replace(/^(?:www\d*|m|mobile|web|secure|portal|api)\./i, '');
@@ -806,7 +1259,7 @@ export function analyzeThreatCandidate(
     const normHost = normalizeText(cleanHost);
     const normTokens = normHost.toLowerCase().split(/[^a-z0-9]+/);
 
-    // 1. High-Profile Global & Regional Brand Impersonation Check (e.g. flipkartindia.co.in, amazonind.co, paypa1-login.com)
+    // 1. High-Profile Global & Regional Brand Impersonation Check (e.g. flipkartindia.co.in, amazonind.co, paypa1-login.com, amaz0n.com)
     for (const gBrand of GLOBAL_POPULAR_BRANDS) {
       const bName = gBrand.name;
       const isOfficial = gBrand.officialDomains.some(od => cleanHost === od || cleanHost.endsWith('.' + od) || host === od || host.endsWith('.' + od));
@@ -860,6 +1313,25 @@ export function analyzeThreatCandidate(
             severity: 'critical',
             icon: 'Lock',
           });
+
+          // Check direct typosquatting variation
+          if (isTyposquat) {
+            signals.push({
+              signalType: 'typosquat_brand_lookalike',
+              description: `Direct Brand Typosquatting: Domain root "${domainStem}" is a 1-character typo variation of "${bName.toUpperCase()}"`,
+              weight: 35,
+              isPositive: false,
+            });
+            flaggedReasons.push({
+              id: 'typosquat_brand_lookalike',
+              indicatorName: `Direct Brand Typosquatting (${bName.toUpperCase()})`,
+              detected: `Domain root "${domainStem}" is an intentional 1-character typo targeting authentic brand "${bName}".`,
+              whyRisky: 'Typosquatting exploits keyboard slips and misspellings to quietly route authentic brand consumers to imposter web services.',
+              severity: 'critical',
+              recommendedAction: 'Acquire defensive domain registration or report typosquatting host to registrar.',
+              category: 'heuristic',
+            });
+          }
 
           // Check Combisquatting Modifiers (e.g. flipkart + india, amazon + ind, amazon + pay, paypal + verify)
           const matchedSuffix = gBrand.suffixes.find(s => cleanHost.includes(`${bName}${s}`) || cleanHost.includes(`${bName}-${s}`) || cleanHost.includes(`${s}-${bName}`) || cleanHost.includes(`${s}${bName}`));
@@ -921,7 +1393,8 @@ export function analyzeThreatCandidate(
         'pay', 'wallet', 'prime', 'plus', 'pro',
         'login', 'signin', 'verify', 'verification', 'auth', 'portal', 'secure', 'account',
         'support', 'care', 'helpdesk', 'service', 'center', 'helpline', 'official',
-        'mall', 'mart', 'store', 'shop', 'shopping', 'express', 'delivery', 'order'
+        'mall', 'mart', 'store', 'shop', 'shopping', 'express', 'delivery', 'order',
+        'free', 'crypto', 'giveaway', 'airdrop', 'recharge'
       ];
 
       for (const mod of commonModifiers) {
@@ -958,7 +1431,7 @@ export function analyzeThreatCandidate(
               icon: 'ShieldAlert',
             });
 
-            if (['kyc', 'pan', 'otp', 'refund', 'bonus', 'login', 'verify', 'pay', 'wallet'].includes(mod)) {
+            if (['kyc', 'pan', 'otp', 'refund', 'bonus', 'login', 'verify', 'pay', 'wallet', 'free'].includes(mod)) {
               signals.push({
                 signalType: 'high_fraud_keyword',
                 description: `High-fraud commercial credential/financial lure modifier: "${mod}"`,
@@ -978,7 +1451,7 @@ export function analyzeThreatCandidate(
       signals.push({
         signalType: 'brand_keyword',
         description: `Candidate domain incorporates monitored corporate brand label: "${baseline.name}"`,
-        weight: 25,
+        weight: 30,
         isPositive: false,
       });
       flaggedReasons.push({
@@ -993,18 +1466,19 @@ export function analyzeThreatCandidate(
     }
 
     // 3. Authentication & SSO phishing lures (Targeted lures vs standard clean login endpoints)
-    const hostLures = ['login', 'secure', 'verify', 'auth', 'portal', 'signin', 'sso', 'wallet', 'kyc', 'pan', 'refund', 'bonus', 'rewards'];
-    const highFraudTokens = ['kyc', 'pan', 'refund', 'bonus', 'rewards', 'airdrop', 'claim-prize'];
+    const hostLures = [
+      'login', 'secure', 'verify', 'auth', 'portal', 'signin', 'sso', 'wallet',
+      'kyc', 'pan', 'refund', 'bonus', 'rewards', 'password', 'reset', 'update',
+      'banking', 'bank', 'netbanking', 'security', 'claim', 'free', 'airdrop'
+    ];
+    const highFraudTokens = ['kyc', 'pan', 'refund', 'bonus', 'rewards', 'airdrop', 'claim-prize', 'free-recharge'];
     
-    // Split path into discrete tokens to avoid false substring matches (e.g. "company" matching "pan")
     const pathTokens = (path + ' ' + urlInfo.search).toLowerCase().split(/[^a-z0-9]+/);
 
     const matchedHostLure = hostLures.find(lure => hostTokens.includes(lure) || host.includes(`-${lure}`) || host.includes(`${lure}-`) || host.startsWith(`${lure}.`));
     const matchedFraudToken = highFraudTokens.find(token => pathTokens.includes(token));
     const matchedPathLure = hostLures.find(lure => pathTokens.includes(lure));
 
-    // Lure in hostname is suspicious on non-official domains.
-    // Lure in path is only suspicious if it's a high-fraud token (kyc, refund, etc.) OR combined with other risk factors (brand impersonation, hyphens, etc.)
     const hasOtherThreatFactor = signals.some(s => !s.isPositive) || (host.match(/-/g) || []).length >= 2;
     const shouldFlagLure = matchedHostLure || matchedFraudToken || (matchedPathLure && hasOtherThreatFactor);
     const flaggedLureToken = matchedHostLure || matchedFraudToken || (shouldFlagLure ? matchedPathLure : null);
@@ -1013,7 +1487,7 @@ export function analyzeThreatCandidate(
       signals.push({
         signalType: 'sso_auth_lure',
         description: `Authentication & credential harvesting lure token present: "${flaggedLureToken}"`,
-        weight: 25,
+        weight: 35,
         isPositive: false,
       });
       flaggedReasons.push({
@@ -1037,7 +1511,26 @@ export function analyzeThreatCandidate(
       }
     }
 
-    // 4. Multi-hyphenation deceptive pattern
+    // 4. Insecure plaintext HTTP protocol on suspicious target
+    if (urlInfo.isInsecureHttp && signals.some(s => !s.isPositive)) {
+      signals.push({
+        signalType: 'insecure_http_protocol',
+        description: 'Unencrypted HTTP Protocol: Cleartext transmission without SSL/TLS encryption',
+        weight: 20,
+        isPositive: false,
+      });
+      flaggedReasons.push({
+        id: 'insecure_http_protocol',
+        indicatorName: 'Unencrypted Cleartext HTTP Protocol',
+        detected: 'URL specifies plaintext "http://" protocol instead of encrypted "https://".',
+        whyRisky: 'Plaintext HTTP permits Man-in-the-Middle (MitM) eavesdropping, packet sniffing, and credential theft.',
+        severity: 'medium',
+        recommendedAction: 'Enforce HTTPS-only policy and SSL certificates.',
+        category: 'heuristic',
+      });
+    }
+
+    // 5. Multi-hyphenation deceptive pattern
     const hyphenCount = (host.match(/-/g) || []).length;
     if (hyphenCount >= 2) {
       signals.push({
@@ -1057,7 +1550,7 @@ export function analyzeThreatCandidate(
       });
     }
 
-    // 5. Character transpositions (Damerau-Levenshtein) against baseline
+    // 6. Character transpositions (Damerau-Levenshtein) against baseline
     for (const officialDom of baseline.officialDomains) {
       const cleanOfficial = officialDom.replace(/^https?:\/\//, '').replace(/\/$/, '').split('.')[0];
       const candRoot = host.split('.')[0];
@@ -1081,7 +1574,7 @@ export function analyzeThreatCandidate(
       }
     }
 
-    // 6. Homoglyphs & leetspeak (Character substitutions that deliberately forge corporate or global brands)
+    // 7. Homoglyphs & leetspeak (Character substitutions that deliberately forge corporate or global brands)
     const hasHomoglyphChar = Object.keys(HOMOGLYPH_MAP).some(char => host.includes(char));
     const isTargetingCorporate = !host.includes(brandNorm) && candNormalized.includes(brandNorm);
     const isTargetingGlobalBrand = GLOBAL_POPULAR_BRANDS.some(b => {
@@ -1119,7 +1612,7 @@ export function analyzeThreatCandidate(
       });
     }
 
-    // 7. Low edit distance against baseline
+    // 8. Low edit distance against baseline
     for (const officialDom of baseline.officialDomains) {
       const cleanOfficial = officialDom.replace(/^https?:\/\//, '').replace(/\/$/, '');
       const dist = levenshteinDistance(host, cleanOfficial);
@@ -1143,14 +1636,14 @@ export function analyzeThreatCandidate(
       }
     }
 
-    // 8. Suspicious high-abuse TLDs
-    const suspiciousTlds = ['.xyz', '.top', '.tk', '.ml', '.ga', '.cf', '.gq', '.buzz', '.rest', '.click', '.cam', '.work', '.fit', '.cc'];
+    // 9. Suspicious high-abuse TLDs
+    const suspiciousTlds = ['.xyz', '.top', '.tk', '.ml', '.ga', '.cf', '.gq', '.buzz', '.rest', '.click', '.cam', '.work', '.fit', '.cc', '.site', '.online', '.store', '.shop', '.club', '.info', '.vip', '.icu'];
     const matchedTld = suspiciousTlds.find(tld => host.endsWith(tld));
     if (matchedTld && !signals.some(s => s.signalType === 'suspicious_tld_mismatch')) {
       signals.push({
         signalType: 'suspicious_tld',
         description: `High-abuse / low-reputation top-level domain extension detected: "${matchedTld}"`,
-        weight: 15,
+        weight: 25,
         isPositive: false,
       });
       flaggedReasons.push({
@@ -1164,12 +1657,12 @@ export function analyzeThreatCandidate(
       });
     }
 
-    // 9. Raw IP Address as Hostname
+    // 10. Raw IP Address as Hostname
     if (/^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$/.test(host)) {
       signals.push({
         signalType: 'raw_ip_host',
         description: 'Direct IP address used as hostname instead of a registered domain name',
-        weight: 25,
+        weight: 35,
         isPositive: false,
       });
       flaggedReasons.push({
@@ -1182,185 +1675,43 @@ export function analyzeThreatCandidate(
         category: 'heuristic',
       });
     }
-  }
 
-  // CHANNEL: Social Media
-  if (channel === 'social') {
-    // 1. Brand name stem or keyword in handle
-    const hasBrandStem = candClean.includes(brandNorm) || baseline.monitoredKeywords.some(kw => candClean.includes(kw.toLowerCase()));
-    if (hasBrandStem) {
+    // 11. Non-standard ports
+    if (urlInfo.port && !['80', '443'].includes(urlInfo.port)) {
       signals.push({
-        signalType: 'brand_stem',
-        description: `Candidate handle contains monitored brand name stem or keyword (${baseline.name})`,
+        signalType: 'non_standard_port',
+        description: `Non-standard web port detected (Port :${urlInfo.port})`,
         weight: 25,
         isPositive: false,
       });
       flaggedReasons.push({
-        id: 'brand_stem',
-        indicatorName: 'Brand Keyword Impersonation in Handle',
-        detected: `Handle contains corporate brand stem "${baseline.name}".`,
-        whyRisky: 'Deceptive handles trick followers into assuming official company affiliation, enabling credential theft.',
-        severity: 'high',
-        recommendedAction: 'File an impersonation report with platform Trust & Safety teams using official trademark credentials.',
+        id: 'non_standard_port',
+        indicatorName: 'Non-Standard Web Service Port',
+        detected: `Target connects on non-standard port :${urlInfo.port}.`,
+        whyRisky: 'Threat actors host unauthorized services and staging tools on atypical ports to evade default firewall egress policies.',
+        severity: 'medium',
+        recommendedAction: 'Verify port service banners and restrict egress filtering.',
         category: 'heuristic',
       });
-      harmfulConsequences.push({
-        id: 'brand_impersonation',
-        title: 'Brand Impersonation & Customer Trust Erosion',
-        tag: 'Reputation Risk',
-        description: 'Attackers create convincing social profiles to deceive customers and damage brand reputation.',
-        severity: 'high',
-        icon: 'ShieldAlert',
-      });
     }
 
-    // 2. Customer support lures
-    const supportLures = ['support', 'help', 'desk', 'bot', 'care', 'assist', 'service', 'ticket', 'verify', 'auth'];
-    const matchedLure = supportLures.find(lure => candClean.includes(lure) || (extraContext?.bio && extraContext.bio.toLowerCase().includes(lure)));
-    if (matchedLure) {
+    // 12. Unvetted Third-Party Domain Entity Notice (if no threat signals found and not baseline excluded)
+    if (signals.length === 0 && !exclusion.isExcluded) {
       signals.push({
-        signalType: 'support_lure',
-        description: `Customer support lure wording detected: "${matchedLure}" (high impersonation vector)`,
-        weight: 30,
-        isPositive: false,
-      });
-      flaggedReasons.push({
-        id: 'support_lure',
-        indicatorName: 'Counterfeit Customer Support Lure',
-        detected: `Target uses support terminology: "${matchedLure}".`,
-        whyRisky: 'Threat actors impersonate support desks to solicit passwords, 2FA codes, or remote desktop access from distressed users.',
-        severity: 'critical',
-        recommendedAction: 'Issue a customer security bulletin clarifying that official support never asks for credentials via direct messages.',
-        category: 'heuristic',
-      });
-      harmfulConsequences.push({
-        id: 'credential_theft',
-        title: 'Credential Theft & Account Takeover',
-        tag: 'Direct Attack',
-        description: 'Victims are lured into sending login credentials or OTP codes under the guise of account verification.',
-        severity: 'critical',
-        icon: 'Lock',
-      });
-    }
-
-    // 3. Promotional incentive cues
-    const promoLures = ['airdrop', 'rewards', 'reward', 'bonus', 'giveaway', 'claim', 'promo', 'free'];
-    const matchedPromo = promoLures.find(lure => candClean.includes(lure) || (extraContext?.bio && extraContext.bio.toLowerCase().includes(lure)));
-    if (matchedPromo) {
-      signals.push({
-        signalType: 'promo_lure',
-        description: `Promotional incentive cue detected: "${matchedPromo}" (phishing giveaway indicator)`,
-        weight: 25,
-        isPositive: false,
-      });
-      flaggedReasons.push({
-        id: 'promo_lure',
-        indicatorName: 'Fraudulent Incentive / Giveaway Lure',
-        detected: `Promotional trigger detected: "${matchedPromo}".`,
-        whyRisky: 'Fake giveaway campaigns manipulate urgency to persuade users to connect crypto wallets or enter credit card details.',
-        severity: 'high',
-        recommendedAction: 'Submit DMCA and platform fraud takedown notices targeting the promotional campaign links.',
-        category: 'heuristic',
-      });
-      harmfulConsequences.push({
-        id: 'financial_fraud',
-        title: 'Financial Fraud & Unauthorized Charges',
-        tag: 'Monetary Loss',
-        description: 'Fake prize claims trick victims into paying advance processing fees or authorizing rogue payment transactions.',
-        severity: 'high',
-        icon: 'AlertTriangle',
-      });
-    }
-
-    // 4. VIP Executive impersonation
-    for (const vip of baseline.vipExecutives) {
-      const vipClean = vip.split('(')[0].trim().toLowerCase();
-      if (candClean.includes(vipClean.replace(/\s+/g, '')) || candNormalized.includes(vipClean) || (extraContext?.bio && extraContext.bio.toLowerCase().includes(vipClean))) {
-        signals.push({
-          signalType: 'vip_impersonation',
-          description: `VIP Executive match: Impersonation of monitored leadership persona "${vip}"`,
-          weight: 30,
-          isPositive: false,
-        });
-        flaggedReasons.push({
-          id: 'vip_impersonation',
-          indicatorName: 'Executive / VIP Identity Theft',
-          detected: `Direct impersonation of monitored executive: "${vip}".`,
-          whyRisky: 'Executive spoofing is used in targeted Business Email Compromise (BEC) and wire transfer fraud.',
-          severity: 'critical',
-          recommendedAction: 'Escalate to platform executive protection desk for urgent verified badge revocation or account suspension.',
-          category: 'verified',
-        });
-        harmfulConsequences.push({
-          id: 'identity_theft',
-          title: 'Executive Identity Misuse & BEC Risk',
-          tag: 'Targeted Fraud',
-          description: 'Attackers misuse executive personas to authorize fraudulent corporate transactions or deceive employees.',
-          severity: 'critical',
-          icon: 'ShieldAlert',
-        });
-        break;
-      }
-    }
-
-    // 5. Authority modifier suffixes
-    const authorityModifiers = ['_official', 'official', '_bot', 'bot', '_team', 'team', '_corp', 'corp'];
-    const matchedAuth = authorityModifiers.find(mod => candClean.endsWith(mod) || candClean.includes(mod));
-    if (matchedAuth) {
-      signals.push({
-        signalType: 'authority_modifier',
-        description: `Authority suffix modifier attached to handle: "${matchedAuth}"`,
+        signalType: 'unvetted_external_domain',
+        description: `Unvetted Third-Party Domain: "${host}" is an external entity with no registered corporate baseline affiliation`,
         weight: 15,
         isPositive: false,
       });
       flaggedReasons.push({
-        id: 'authority_modifier',
-        indicatorName: 'Deceptive Authority Modifier Suffix',
-        detected: `Handle appends authority modifier "${matchedAuth}".`,
-        whyRisky: 'Affixing "official" or "team" to unverified accounts creates false trust to bypass basic user scrutiny.',
-        severity: 'medium',
-        recommendedAction: 'Publicize official verified social directory to help users distinguish authentic channels.',
+        id: 'unvetted_external_domain',
+        indicatorName: 'Unvetted External Domain Entity',
+        detected: `Domain "${host}" is an independent third-party web host not registered in your Brand Baseline.`,
+        whyRisky: 'External web entities operate outside organizational security governance and require standard browsing vigilance.',
+        severity: 'low',
+        recommendedAction: 'Verify destination authenticity before submitting any enterprise credentials or downloading assets.',
         category: 'heuristic',
       });
-    }
-
-    // 6. Bio credential harvesting request
-    if (extraContext?.bio) {
-      const bioLower = extraContext.bio.toLowerCase();
-      if (bioLower.includes('dm') && (bioLower.includes('pass') || bioLower.includes('key') || bioLower.includes('wallet') || bioLower.includes('login') || bioLower.includes('ticket'))) {
-        signals.push({
-          signalType: 'credential_harvesting_bio',
-          description: 'Profile bio contains direct credential or private key solicitation instruction',
-          weight: 25,
-          isPositive: false,
-        });
-        flaggedReasons.push({
-          id: 'credential_harvesting_bio',
-          indicatorName: 'Direct Credential Solicitation in Bio',
-          detected: 'Bio explicitly instructs users to DM private keys, login tokens, or account passwords.',
-          whyRisky: 'Legitimate organizations never instruct users to direct message sensitive security credentials.',
-          severity: 'critical',
-          recommendedAction: 'Report account immediately and caution users against direct message interactions.',
-          category: 'heuristic',
-        });
-      }
-      if (bioLower.includes('bit.ly') || bioLower.includes('tinyurl') || bioLower.includes('t.me') || bioLower.includes('linktr.ee')) {
-        signals.push({
-          signalType: 'shortened_redirect_bio',
-          description: 'Bio incorporates off-platform shortened link or external redirect hub',
-          weight: 15,
-          isPositive: false,
-        });
-        flaggedReasons.push({
-          id: 'shortened_redirect_bio',
-          indicatorName: 'Obfuscated Off-Platform Shortened Link',
-          detected: 'Profile uses link shortener or external redirect page in biography.',
-          whyRisky: 'Shortened URLs conceal malicious destination landing pages and bypass platform domain filters.',
-          severity: 'medium',
-          recommendedAction: 'Analyze expanded redirect destination URL using ThreatLens deep domain scanner.',
-          category: 'heuristic',
-        });
-      }
     }
   }
 
@@ -1509,18 +1860,27 @@ export function analyzeThreatCandidate(
     });
   }
 
+  // Industry-standard risk tier classification
   let riskLevel: 'low' | 'medium' | 'high' | 'critical' = 'low';
   let classification: 'low_risk' | 'suspicious' | 'dangerous' = 'low_risk';
   let classificationLabel = 'Low Risk — No major threat indicators detected';
 
-  if (riskScore >= 70) {
-    riskLevel = riskScore >= 90 ? 'critical' : 'high';
+  if (riskScore >= 75) {
+    riskLevel = 'critical';
+    classification = 'dangerous';
+    classificationLabel = 'Dangerous URL — Critical Risk Active Threat';
+  } else if (riskScore >= 50) {
+    riskLevel = 'high';
     classification = 'dangerous';
     classificationLabel = 'Dangerous URL — Avoid opening this link';
-  } else if (riskScore >= 15) {
+  } else if (riskScore >= 20) {
     riskLevel = 'medium';
     classification = 'suspicious';
-    classificationLabel = 'Suspicious URL — Further verification recommended';
+    classificationLabel = 'Suspicious URL — Exercise caution and verify';
+  } else if (riskScore > 0) {
+    riskLevel = 'low';
+    classification = 'low_risk';
+    classificationLabel = `Low Risk — Unvetted Domain (Score: ${riskScore} / 100)`;
   } else {
     riskLevel = 'low';
     classification = 'low_risk';
@@ -1560,9 +1920,9 @@ export function analyzeThreatCandidate(
       'Never share 2-factor authentication codes (OTPs) or recovery phrases.',
     ];
   } else {
-    // Clean / Low Risk (0 / 100)
+    // Clean / Low Risk (0-20 / 100)
     recommendedPrecautions = [
-      'Target passed deterministic heuristic checks with zero threat indicators detected.',
+      'Target passed deterministic heuristic checks with zero severe threat indicators detected.',
       'Always confirm the browser padlock icon indicates a valid HTTPS connection.',
       'Ensure you are navigating to the intended service before entering sensitive account credentials.',
       'Keep your web browser and operating system updated to the latest security release.',

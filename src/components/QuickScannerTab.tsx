@@ -191,13 +191,33 @@ export default function QuickScannerTab({ onScanComplete, presetCandidate }: Qui
           </span>
           <button
             onClick={() => loadPreset({
+              candidate: 'https://www.instagram.com/its_sneh234/',
+              channel: 'domain',
+              desc: 'Suspect Instagram Account Profile (Padding + Unverified)',
+            })}
+            className="rounded-lg bg-rose-100/90 border border-rose-300 px-3 py-1.5 text-xs font-bold text-rose-800 hover:bg-rose-200 transition-colors shadow-2xs flex items-center gap-1.5 animate-pulse"
+          >
+            🚨 Instagram Profile (its_sneh234)
+          </button>
+          <button
+            onClick={() => loadPreset({
               candidate: 'https:\\amazonind.co',
               channel: 'domain',
               desc: 'Amazon Impersonation (Backslash Evasion + Combisquatting)',
             })}
-            className="rounded-lg bg-rose-100/80 border border-rose-300 px-3 py-1.5 text-xs font-bold text-rose-800 hover:bg-rose-200/80 transition-colors shadow-2xs flex items-center gap-1.5 animate-pulse"
+            className="rounded-lg bg-rose-50 border border-rose-200 px-3 py-1.5 text-xs font-bold text-rose-800 hover:bg-rose-100 transition-colors shadow-2xs flex items-center gap-1.5"
           >
             🔥 Fake Amazon (https:\amazonind.co)
+          </button>
+          <button
+            onClick={() => loadPreset({
+              candidate: 'amaz0n.com',
+              channel: 'domain',
+              desc: 'Typosquatting Lookalike Domain (Homoglyph 0 for o)',
+            })}
+            className="rounded-lg bg-rose-50 border border-rose-200 px-3 py-1.5 text-xs font-bold text-rose-800 hover:bg-rose-100 transition-colors shadow-2xs flex items-center gap-1.5"
+          >
+            🚨 Typosquat (amaz0n.com)
           </button>
           <button
             onClick={() => loadPreset({
@@ -208,6 +228,16 @@ export default function QuickScannerTab({ onScanComplete, presetCandidate }: Qui
             className="rounded-lg bg-amber-100/80 border border-amber-300 px-3 py-1.5 text-xs font-bold text-amber-900 hover:bg-amber-200/80 transition-colors shadow-2xs flex items-center gap-1.5"
           >
             ⚠️ Fake Flipkart (flipkartindia.co.in)
+          </button>
+          <button
+            onClick={() => loadPreset({
+              candidate: 'aman',
+              channel: 'domain',
+              desc: 'Malformed / Incomplete Domain Hostname (Missing TLD)',
+            })}
+            className="rounded-lg bg-amber-50 border border-amber-200 px-3 py-1.5 text-xs font-medium text-amber-800 hover:bg-amber-100 transition-colors shadow-2xs"
+          >
+            ⚠️ Incomplete Domain (aman)
           </button>
           <button
             onClick={() => loadPreset({
@@ -239,17 +269,6 @@ export default function QuickScannerTab({ onScanComplete, presetCandidate }: Qui
             className="rounded-lg bg-amber-50 border border-amber-200 px-3 py-1.5 text-xs font-medium text-amber-800 hover:bg-amber-100 transition-colors shadow-2xs"
           >
             ⚠️ Rogue Support Bot (@threatlens_support_bot)
-          </button>
-          <button
-            onClick={() => loadPreset({
-              candidate: 'com.threatlens.banking.helper',
-              channel: 'app',
-              publisher: 'Shady Dev Studio',
-              desc: 'Trojanized APK',
-            })}
-            className="rounded-lg bg-indigo-50 border border-indigo-200 px-3 py-1.5 text-xs font-medium text-indigo-800 hover:bg-indigo-100 transition-colors shadow-2xs"
-          >
-            📱 Trojanized APK (Namespace Squatting)
           </button>
         </div>
       </div>
